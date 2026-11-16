@@ -1,4 +1,6 @@
-# ai-usage-limits
+# tidewatch
+
+*AI limits ebb during the week and refill at a fixed hour, like a tide. This watches the tide so none of it goes to waste.*
 
 See how much of your Claude, Codex and Antigravity limits is left, in one place: terminal, JSON, or the macOS menu bar. It warns you when a weekly limit is about to reset with quota still unused, when a limit runs low, and when a new model appears.
 
@@ -23,20 +25,20 @@ You do not need all three tools. Anything not installed is skipped.
 Requires Python 3.9+ on macOS or Linux. Developed and used on macOS; Linux is untested.
 
 ```bash
-git clone https://github.com/Abdulaziz-kiran/ai-usage-limits.git
-cd ai-usage-limits
-python3 ai_limits.py --refresh
+git clone https://github.com/Abdulaziz-kiran/tidewatch.git
+cd tidewatch
+python3 tidewatch.py --refresh
 ```
 
 ## Usage
 
 ```bash
-python3 ai_limits.py                 # readable summary (30-minute cache)
-python3 ai_limits.py --refresh       # measure now
-python3 ai_limits.py --short         # warnings only; prints nothing if all is well
-python3 ai_limits.py --json          # for scripts
-python3 ai_limits.py --menubar       # SwiftBar format
-python3 ai_limits.py --accept-models # treat the current model list as known
+python3 tidewatch.py                 # readable summary (30-minute cache)
+python3 tidewatch.py --refresh       # measure now
+python3 tidewatch.py --short         # warnings only; prints nothing if all is well
+python3 tidewatch.py --json          # for scripts
+python3 tidewatch.py --menubar       # SwiftBar format
+python3 tidewatch.py --accept-models # treat the current model list as known
 ```
 
 ## Warnings
@@ -53,7 +55,7 @@ python3 ai_limits.py --accept-models # treat the current model list as known
 Pipe JSON to `--claude-save`. `resetsAt` needs a timezone, and windows with a `null` reset are ignored. A `{"plan": {"windows": [...]}}` wrapper is also accepted.
 
 ```bash
-python3 ai_limits.py --claude-save <<'EOF'
+python3 tidewatch.py --claude-save <<'EOF'
 {"windows": [
   {"label": "5-hour", "percentUsed": 42, "resetsAt": "2026-11-09T20:00:00Z"},
   {"label": "Weekly · All models", "percentUsed": 18, "resetsAt": "2026-11-14T08:00:00Z"}
@@ -75,7 +77,7 @@ Add this to `~/.claude/settings.json`, using your own path:
 {
   "hooks": {
     "SessionStart": [
-      {"hooks": [{"type": "command", "command": "python3 /path/to/ai_limits.py --short", "timeout": 5}]}
+      {"hooks": [{"type": "command", "command": "python3 /path/to/tidewatch.py --short", "timeout": 5}]}
     ]
   }
 }

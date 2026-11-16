@@ -590,7 +590,7 @@ def warnings(data, now=None):
     age = max(0, now - data.get("timestamp", now))
     suffix = f" (measured {format_duration(age)} ago)" if age > 7200 else ""
     new_models = [f"NEW MODEL: {v} ({k}): review which models you use, "
-                  f"then run ai_limits.py --accept-models{suffix}"
+                  f"then run tidewatch.py --accept-models{suffix}"
                   for k, v in data.get("models_status", {}).get("new", {}).items()]
     return new_models + result
 
@@ -605,7 +605,7 @@ def claude_stale_hint(data, now=None):
             any(x["reset"] <= now for x in claude.get("limits", []))):
         age = format_duration(now - timestamp)
         return (f"CLAUDE DATA STALE: last saved {age} ago; "
-                "save fresh usage with ai_limits.py --claude-save")
+                "save fresh usage with tidewatch.py --claude-save")
     return ""
 
 
@@ -616,7 +616,7 @@ def cache_fresh(data):
 
 
 def refresh_background():
-    subprocess.Popen([sys.executable, str(ROOT / "ai_limits.py"), "--refresh", "--quiet"],
+    subprocess.Popen([sys.executable, str(ROOT / "tidewatch.py"), "--refresh", "--quiet"],
                      stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
                      stderr=subprocess.DEVNULL, start_new_session=True)
 
@@ -704,7 +704,7 @@ def menubar(data):
     if claude_stale_hint(data):
         lines.append(claude_stale_hint(data) + " | color=gray")
     lines.extend(["---", f'Refresh | bash="{sys.executable}" '
-                     f'param1="{ROOT / "ai_limits.py"}" param2=--refresh '
+                     f'param1="{ROOT / "tidewatch.py"}" param2=--refresh '
                      "param3=--quiet terminal=false refresh=true"])
     return "\n".join(lines)
 
@@ -797,7 +797,7 @@ def main(argv=None):
                 alerts = warnings(data)
                 selected = alerts[:3]
                 if len(alerts) > 3:
-                    selected[-1] += f" (+{len(alerts) - 3} warnings: ai_limits.py)"
+                    selected[-1] += f" (+{len(alerts) - 3} warnings: tidewatch.py)"
                 lines = ["; ".join(selected[:2])] if selected else []
                 if len(selected) == 3:
                     lines.append(selected[2])

@@ -5,7 +5,7 @@
 DIR="$(cd "$(dirname "$0")/.." && pwd)"
 for PYTHON in /opt/homebrew/bin/python3 /usr/local/bin/python3; do
     if [[ -x "$PYTHON" ]]; then
-        exec "$PYTHON" "$DIR/ai_limits.py" --menubar
+        exec "$PYTHON" "$DIR/tidewatch.py" --menubar
     fi
 done
-exec python3 "$DIR/ai_limits.py" --menubar
+exec python3 "$DIR/tidewatch.py" --menubar

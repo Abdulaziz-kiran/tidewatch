@@ -14,7 +14,7 @@ import time
 import unittest
 from unittest.mock import Mock, patch
 
-import ai_limits as m
+import tidewatch as m
 
 FIXTURES = Path(__file__).parent / "fixtures"
 
@@ -96,7 +96,7 @@ class LimitTest(unittest.TestCase):
         self.assertFalse(m.warnings(self.data(self.limit(remaining=10))))
         new = {"models_status": {"new": {"agy:x": "X"}}}
         self.assertEqual(["NEW MODEL: X (agy:x): review which models you use, "
-                          "then run ai_limits.py --accept-models"], m.warnings(new))
+                          "then run tidewatch.py --accept-models"], m.warnings(new))
 
     def test_claude_warning_and_reminder(self):
         x = self.limit(source="Claude", name="Weekly", remaining=65, reset=self.now + 9 * 3600)
@@ -131,7 +131,7 @@ class LimitTest(unittest.TestCase):
         code, output, error = self.cli("--short")
         self.assertEqual((0, ""), (code, error))
         self.assertEqual(3, output.count("NEW MODEL"))
-        self.assertIn("(+2 warnings: ai_limits.py)", output)
+        self.assertIn("(+2 warnings: tidewatch.py)", output)
         self.assertIn("CLAUDE DATA STALE", output)
         self.assertEqual(3, len(output.splitlines()))
         self.assertEqual((0, "", ""), self.cli("--short", "--quiet"))
@@ -434,7 +434,7 @@ class LimitTest(unittest.TestCase):
     def test_background_command_and_quiet_error(self):
         self.popen.side_effect = None
         m.refresh_background()
-        self.assertEqual([m.sys.executable, str(m.ROOT / "ai_limits.py"), "--refresh",
+        self.assertEqual([m.sys.executable, str(m.ROOT / "tidewatch.py"), "--refresh",
                           "--quiet"], self.popen.call_args.args[0])
         kw = self.popen.call_args.kwargs
         self.assertTrue(kw["start_new_session"])
@@ -561,7 +561,7 @@ class LimitTest(unittest.TestCase):
             with patch.object(m.shutil, "which", return_value=found) as lookup, \
                     patch.object(m.os.path, "isfile", side_effect=lambda p: p in available), \
                     patch.object(m.os, "access", return_value=True):
-                module = runpy.run_path(m.__file__, run_name="ai_limits_path_test")
+                module = runpy.run_path(m.__file__, run_name="tidewatch_path_test")
             lookup.assert_called_once_with("agy")
             self.assertEqual(expected, module["AGY"])
         self.patch_value("AGY", "/opt/homebrew/bin/agy")
@@ -574,7 +574,7 @@ class LimitTest(unittest.TestCase):
     def test_refresh_line_plain_paths(self):
         line = m.menubar({}).splitlines()[-1]
         self.assertEqual(
-            f'Refresh | bash="{m.sys.executable}" param1="{m.ROOT / "ai_limits.py"}" '
+            f'Refresh | bash="{m.sys.executable}" param1="{m.ROOT / "tidewatch.py"}" '
             "param2=--refresh param3=--quiet terminal=false refresh=true", line)
 
     def test_refresh_line_spaces_paths(self):
@@ -582,7 +582,7 @@ class LimitTest(unittest.TestCase):
         with patch.object(m.sys, "executable", "/test/Python App/python3"):
             self.assertEqual(
                 f'Refresh | bash="/test/Python App/python3" '
-                f'param1="{m.ROOT / "ai_limits.py"}" param2=--refresh '
+                f'param1="{m.ROOT / "tidewatch.py"}" param2=--refresh '
                 'param3=--quiet terminal=false refresh=true',
                 m.menubar({}).splitlines()[-1])
 
@@ -708,7 +708,7 @@ class LimitTest(unittest.TestCase):
         data["claude"] = m.claude_usage()
         self.assertEqual(
             "CLAUDE DATA STALE: last saved 7h 0m ago; "
-            "save fresh usage with ai_limits.py --claude-save", m.claude_stale_hint(data))
+            "save fresh usage with tidewatch.py --claude-save", m.claude_stale_hint(data))
 
     def test_codex_home_override_and_default(self):
         custom = self.root / "custom codex"
