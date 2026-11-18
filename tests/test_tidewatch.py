@@ -1539,7 +1539,7 @@ class LimitTest(unittest.TestCase):
         config = self.root / "personal" / "config.json"
         config.parent.mkdir()
         (config.parent / "strings.json").write_text(json.dumps({
-            "percent": "%{}", "label_low": "AZ", "decimal_comma": True}))
+            "percent": "%{}", "label_low": "ALMOST EMPTY", "decimal_comma": True}))
         self.write_json(config, {
             "data_dir": "state", "messages": "strings.json", "timezone_offset_hours": 6,
             "work_hours": [["18:00", "20:00"]], "night_hours": [],
@@ -1564,10 +1564,14 @@ class LimitTest(unittest.TestCase):
                          (m.HELLO_PROMPT, m.SHORT_SUMMARY, m.CLAUDE_MISSING_IS_STALE,
                           m.STRICT_CODEX_MODEL_FILES))
         self.assertEqual(dict(m.FAST_RATE, Codex=5), m.FAST_RATE)
-        self.assertEqual("AZ: Codex weekly %9 left", m.warnings(self.data(
+        self.assertEqual("ALMOST EMPTY: Codex weekly %9 left", m.warnings(self.data(
             self.limit(remaining=9)))[0].split(", resets")[0])
         self.assertEqual("2,5", m.decimal(2.5))
-        for bad in ({"messages": {"no_such_key": "x"}}, {"short_summary": 1}, []):
+        m.apply_settings({"work_hours": [["9:05", "21:00"]]}, config.parent)
+        self.assertEqual([("09:05", "21:00")], m.WORK_HOURS)
+        for bad in ({"messages": {"no_such_key": "x"}}, {"short_summary": 1}, [],
+                    {"work_hours": [["7pm", "22:00"]]}, {"work_hours": 5},
+                    {"night_hours": [["22:00"]]}):
             with self.subTest(bad=bad), self.assertRaises(ValueError):
                 m.apply_settings(bad, config.parent)
 
@@ -1599,6 +1603,13 @@ class LimitTest(unittest.TestCase):
             configure.side_effect = ValueError("invalid")
             self.assertEqual((0, "", ""), self.cli("--short", "--config", str(config)))
             self.assertEqual(1, self.cli("--json", "--config", str(config))[0])
+        # A broken default settings file is ignored, like before.
+        m.DATA.mkdir(parents=True, exist_ok=True)
+        for raw in ("{", "[]", '{"work_hours": 5}', "[" * 2000 + "]" * 2000):
+            m.SETTINGS.write_text(raw)
+            with patch.object(m, "prepare", return_value=({}, True)):
+                code, output, _ = self.cli()
+                self.assertEqual((0, "Data: cache, 0m ago"), (code, output.splitlines()[0]))
 
 
 if __name__ == "__main__":

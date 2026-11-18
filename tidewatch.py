@@ -159,7 +159,6 @@ MESSAGES = {
     "error_accept": "Could not accept models",
     "error_other": "Could not complete operation",
     "error_no_details": "No details",
-    "description": "Show AI usage limits",
 }
 _lock = None
 
@@ -1526,18 +1525,25 @@ def set_data_dir(path):
     HISTORY, HISTORY_ARCHIVE = DATA / "history.jsonl", DATA / "history-archive"
 
 
-def apply_settings(settings, base):
-    """Apply a settings dictionary; relative paths are resolved against base."""
+def apply_settings(settings, base, data_dir=True):
+    """Apply a settings dictionary; relative paths are resolved against base.
+    data_dir is honoured only for an explicit settings file."""
     g = globals()
     if not isinstance(settings, dict):
         raise ValueError("Settings must be a JSON object")
-    if "data_dir" in settings:
-        set_data_dir(base / text(settings["data_dir"]))
+    if "data_dir" in settings and data_dir:
+        set_data_dir(base / Path(text(settings["data_dir"])).expanduser())
     if "timezone_offset_hours" in settings:
         g["TZ"] = timezone(timedelta(hours=number(settings["timezone_offset_hours"], -14, 14)))
     for key, name in (("work_hours", "WORK_HOURS"), ("night_hours", "NIGHT_HOURS")):
         if key in settings:
-            g[name] = [(text(a), text(b)) for a, b in settings[key]]
+            hours = settings[key]
+            if not isinstance(hours, list) or not all(
+                    isinstance(pair, list) and len(pair) == 2 for pair in hours):
+                raise ValueError(f"{key} must be a list of [start, end] pairs")
+            # Validate and normalise to two-digit HH:MM.
+            g[name] = [tuple(datetime.strptime(text(v), "%H:%M").strftime("%H:%M")
+                             for v in pair) for pair in hours]
     for key, name in (("normal_rate", "NORMAL_RATE"), ("night_rate", "NIGHT_RATE"),
                       ("fast_rate", "FAST_RATE")):
         if key in settings:
@@ -1565,7 +1571,7 @@ def apply_settings(settings, base):
     if "messages" in settings:
         messages = settings["messages"]
         if isinstance(messages, str):
-            messages = read_json(base / messages)
+            messages = read_json(base / Path(messages).expanduser())
         if not isinstance(messages, dict) or not set(messages) <= set(MESSAGES):
             raise ValueError("Unknown message keys")
         MESSAGES.update(messages)
@@ -1574,12 +1580,14 @@ def apply_settings(settings, base):
 def configure(path):
     global CONFIG, SETTINGS
     path = Path(path).expanduser().resolve()
-    apply_settings(read_json(path), path.parent)
+    settings = read_json(path)
+    set_data_dir(path.parent)  # Data lives next to an explicit settings file by default.
+    apply_settings(settings, path.parent)
     CONFIG = SETTINGS = path
 
 
 def main(argv=None):
-    parser = argparse.ArgumentParser(description=MESSAGES["description"])
+    parser = argparse.ArgumentParser(description="Show AI usage limits")
     for name, help_text in (
             ("json", "Print structured JSON output"),
             ("short", "Print up to three warnings without waiting for agy"),
@@ -1599,7 +1607,12 @@ def main(argv=None):
         if config:
             configure(config)
         elif SETTINGS.is_file():
-            apply_settings(read_json(SETTINGS), SETTINGS.parent)
+            # The default settings file is optional; a broken one falls back to defaults.
+            try:
+                apply_settings(read_json(SETTINGS), SETTINGS.parent, data_dir=False)
+            except (OSError, ValueError, TypeError, AttributeError, UnicodeError,
+                    RecursionError):
+                pass
         fast = args.short or args.menubar
         if args.claude_save and not fast:
             claude_save(sys.stdin.read())

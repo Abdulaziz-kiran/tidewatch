@@ -110,11 +110,11 @@ This is experimental. It uses a small amount of your quota, it also starts that 
 
 ## Settings
 
-Settings live in `data/settings.json`, or in any file you pass with `--config` or the `TIDEWATCH_CONFIG` environment variable. With an explicit settings file, data is kept next to it (or in `data_dir`), and background refreshes and the menu's Refresh item use the same file. Every key is optional:
+Settings live in `data/settings.json`, or in any file you pass with `--config` or the `TIDEWATCH_CONFIG` environment variable. With an explicit settings file, data is kept next to it (or in `data_dir`, relative to that file), and background refreshes and the menu's Refresh item use the same file. `data_dir` is ignored in the default `data/settings.json`. Every key is optional:
 
 ```json
 {
-  "data_dir": "data",
+  "data_dir": "state",
   "timezone_offset_hours": 0,
   "work_hours": [["19:00", "22:30"]],
   "night_hours": [["22:30", "04:00"]],
