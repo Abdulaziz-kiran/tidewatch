@@ -33,6 +33,7 @@ class GoldenTest(unittest.TestCase):
             patcher.start()
             self.addCleanup(patcher.stop)
         for patcher in (patch.object(m, "MESSAGES", dict(m.ENGLISH)),
+                        patch.object(m, "system_language", return_value="en"),
                         patch.dict(os.environ, {"CODEX_HOME": str(self.root / ".codex")})):
             patcher.start()
             self.addCleanup(patcher.stop)

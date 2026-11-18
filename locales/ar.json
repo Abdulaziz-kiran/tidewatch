@@ -28,7 +28,7 @@
   "warn_pace": "{label}: {name} أسبوعي {percent}; حتى الهدف {target}: {work}: عادي ~{normal}، سريع ~{fast}",
   "warn_subscription_end": "; ينتهي الاشتراك {date}",
   "warn_new_model": "{label}: {name} ({id}): راجع النماذج التي تستخدمها، ثم شغّل tidewatch.py --accept-models{suffix}",
-  "new_model_separator": ": مراجعة",
+  "new_model_separator": ": راجع",
   "warn_new_models": "{label} ({count}): {names}: راجع النماذج التي تستخدمها، ثم شغّل tidewatch.py --accept-models",
   "warn_new_source": "{label}: أضيفت نماذج {source} إلى القائمة الأساسية تلقائياً (وُجد {count}): راجعها، ثم شغّل tidewatch.py --accept-models{suffix}",
   "more_warnings": " (+{count} تحذيرات: tidewatch.py)",

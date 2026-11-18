@@ -60,6 +60,13 @@ class LocaleTest(unittest.TestCase):
                     if value is not None:
                         self.assertEqual(fields(value), fields(translated[key]), key)
                 self.assertTrue(translated["backlog_done_heading"].startswith("## "))
+                # --short joins new models by cutting each warning at this separator.
+                self.assertTrue(translated["warn_new_model"].startswith(
+                    "{label}: {name} ({id})" + translated["new_model_separator"]))
+                m.load_messages(code)
+                joined = m.short_warnings([m.tr("warn_new_model", label=m.tr("label_new_model"),
+                                                name=n, id=n, suffix="") for n in ("A", "B")])
+                self.assertIn("A (A), B (B)" + translated["new_model_separator"], joined[0])
                 for key in ("warn_new_model", "warn_new_source", "claude_stale"):
                     self.assertIn("tidewatch.py --", translated[key])
 
@@ -115,7 +122,9 @@ class LocaleTest(unittest.TestCase):
         self.assertEqual("KURTAR", m.MESSAGES["label_rescue"])
         m.load_messages("de")
         self.assertEqual("AZALDI", m.MESSAGES["label_low"])
-        for bad in ({"language": 5}, {"messages": {"no_such_key": "x"}}):
+        for bad in ({"language": 5}, {"messages": {"no_such_key": "x"}},
+                    {"messages": {"menu_headers": ["a"]}}, {"messages": {"percent": 5}},
+                    {"messages": {"decimal_comma": "yes"}}):
             with self.assertRaises(ValueError):
                 m.apply_settings(bad, self.root)
 

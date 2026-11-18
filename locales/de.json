@@ -28,7 +28,7 @@
   "warn_pace": "{label}: {name} wöchentlich {percent}; bis Ziel {target}: {work}: normal ~{normal}, schnell ~{fast}",
   "warn_subscription_end": "; Abo endet {date}",
   "warn_new_model": "{label}: {name} ({id}): prüfe genutzte Modelle, dann tidewatch.py --accept-models ausführen{suffix}",
-  "new_model_separator": ": prüfen",
+  "new_model_separator": ": prüfe",
   "warn_new_models": "{label} ({count}): {names}: prüfe genutzte Modelle, dann tidewatch.py --accept-models ausführen",
   "warn_new_source": "{label}: {source}-Modelle wurden automatisch zur Basis hinzugefügt ({count} gefunden): prüfen, dann tidewatch.py --accept-models ausführen{suffix}",
   "more_warnings": " (+{count} Warnungen: tidewatch.py)",

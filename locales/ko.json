@@ -28,7 +28,7 @@
   "warn_pace": "{label}: {name} 주간 {percent}; 목표 {target}까지: {work}: 보통 ~{normal}, 빠름 ~{fast}",
   "warn_subscription_end": "; 구독 종료 {date}",
   "warn_new_model": "{label}: {name} ({id}): 사용 중인 모델 확인 후 tidewatch.py --accept-models 실행{suffix}",
-  "new_model_separator": ": 확인",
+  "new_model_separator": ": 사용",
   "warn_new_models": "{label} ({count}): {names}: 사용 중인 모델 확인 후 tidewatch.py --accept-models 실행",
   "warn_new_source": "{label}: {source} 모델이 기준 목록에 자동 추가됨 ({count}개): 확인 후 tidewatch.py --accept-models 실행{suffix}",
   "more_warnings": " (+{count}개 경고: tidewatch.py)",

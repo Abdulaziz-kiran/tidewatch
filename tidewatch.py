@@ -29,7 +29,8 @@ CLAUDE_CACHE = DATA / "claude-usage.json"
 MODELS_FILE = DATA / "known-models.json"
 SETTINGS = DATA / "settings.json"
 # The standard settings file; data stays in DATA unless it sets data_dir.
-USER_SETTINGS = (Path(os.environ.get("XDG_CONFIG_HOME") or HOME / ".config")
+_XDG = Path(os.environ.get("XDG_CONFIG_HOME") or "").expanduser()
+USER_SETTINGS = ((_XDG if _XDG.is_absolute() else HOME / ".config")
                  / "tidewatch" / "settings.json")
 LOCALES = ROOT / "locales"
 LANGUAGE = None  # From settings; otherwise TIDEWATCH_LANG, the system language, English.
@@ -202,6 +203,22 @@ def available_languages():
     return sorted({"en"} | {p.stem for p in LOCALES.glob("*.json")})
 
 
+def check_messages(messages, name):
+    """Keys must be known and each value must have the English value's type."""
+    if not isinstance(messages, dict) or not set(messages) <= set(ENGLISH):
+        raise ValueError(f"Unknown message keys in {name}")
+    for key, value in messages.items():
+        if key == "date_format":
+            valid = value is None or isinstance(value, str)
+        elif key == "menu_headers":
+            valid = (isinstance(value, list) and len(value) == len(ENGLISH[key])
+                     and all(isinstance(v, str) for v in value))
+        else:
+            valid = type(value) is type(ENGLISH[key])
+        if not valid:
+            raise ValueError(f"Invalid message {key} in {name}")
+
+
 def load_messages(language=None):
     """English, then the language file from locales/, then the settings' own messages.
     An unknown language falls back to English."""
@@ -210,8 +227,7 @@ def load_messages(language=None):
     path = LOCALES / f"{code}.json"
     if code != "en" and code.isalpha() and path.is_file():
         translated = read_json(path)
-        if not isinstance(translated, dict) or not set(translated) <= set(ENGLISH):
-            raise ValueError(f"Unknown message keys in {path.name}")
+        check_messages(translated, path.name)
         messages.update(translated)
     messages.update(MESSAGE_OVERRIDES)
     MESSAGES.clear()
@@ -1637,8 +1653,7 @@ def apply_settings(settings, base, data_dir=True):
         messages = settings["messages"]
         if isinstance(messages, str):
             messages = read_json(base / Path(messages).expanduser())
-        if not isinstance(messages, dict) or not set(messages) <= set(ENGLISH):
-            raise ValueError("Unknown message keys")
+        check_messages(messages, "settings")
         g["MESSAGE_OVERRIDES"] = dict(messages)
     if "language" in settings or "messages" in settings:
         load_messages(LANGUAGE)
@@ -1675,6 +1690,8 @@ def main(argv=None):
                         "settings.json, then data/settings.json); also TIDEWATCH_CONFIG")
     args = parser.parse_args(argv)
     try:
+        # Errors while reading the settings are reported in the environment's language.
+        load_messages(os.environ.get("TIDEWATCH_LANG") or system_language())
         config = args.config or os.environ.get("TIDEWATCH_CONFIG")
         if config:
             configure(config)

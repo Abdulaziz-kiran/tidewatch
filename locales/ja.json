@@ -28,7 +28,7 @@
   "warn_pace": "{label}: {name} 週間 {percent}; 目標 {target} まで: {work}: 通常 ~{normal}、高速 ~{fast}",
   "warn_subscription_end": "; サブスク終了 {date}",
   "warn_new_model": "{label}: {name} ({id}): 使用するモデルを確認し、tidewatch.py --accept-models を実行{suffix}",
-  "new_model_separator": ": 要確認",
+  "new_model_separator": ": 使用",
   "warn_new_models": "{label} ({count}): {names}: 使用するモデルを確認し、tidewatch.py --accept-models を実行",
   "warn_new_source": "{label}: {source} のモデルを基準リストに自動追加 ({count}件): 確認して tidewatch.py --accept-models を実行{suffix}",
   "more_warnings": " (+{count}件の警告: tidewatch.py)",
