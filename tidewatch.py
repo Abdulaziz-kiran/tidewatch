@@ -6,12 +6,14 @@ import json
 import math
 import os
 from pathlib import Path
+import plistlib
 import signal
 import shutil
 import subprocess
 import sys
 import tempfile
 import time
+import unicodedata
 from datetime import datetime, timedelta, timezone
 
 ROOT = Path(__file__).resolve().parent
@@ -26,6 +28,11 @@ CACHE = DATA / "limits.json"
 CLAUDE_CACHE = DATA / "claude-usage.json"
 MODELS_FILE = DATA / "known-models.json"
 SETTINGS = DATA / "settings.json"
+# The standard settings file; data stays in DATA unless it sets data_dir.
+USER_SETTINGS = (Path(os.environ.get("XDG_CONFIG_HOME") or HOME / ".config")
+                 / "tidewatch" / "settings.json")
+LOCALES = ROOT / "locales"
+LANGUAGE = None  # From settings; otherwise TIDEWATCH_LANG, the system language, English.
 HELLO_STATE = DATA / "hello.json"
 HELLO_LOG = DATA / "hello-log.jsonl"
 LOCK = DATA / "refreshing"
@@ -160,11 +167,65 @@ MESSAGES = {
     "error_other": "Could not complete operation",
     "error_no_details": "No details",
 }
+ENGLISH = dict(MESSAGES)
+MESSAGE_OVERRIDES = {}
 _lock = None
 
 
 def tr(key, **values):
     return MESSAGES[key].format(**values)
+
+
+def language_code(value):
+    """'tr_TR.UTF-8', 'pt-BR' or 'zh-Hans' -> 'tr', 'pt', 'zh'."""
+    return str(value).replace("_", "-").split(".")[0].split("@")[0].split("-")[0].lower()
+
+
+def system_language():
+    for name in ("LC_ALL", "LC_MESSAGES", "LANG"):
+        value = os.environ.get(name, "")
+        if value and value not in ("C", "POSIX") and not value.startswith("C."):
+            return language_code(value)
+    if sys.platform == "darwin":
+        # The macOS language list, read from the preferences file without starting a process.
+        try:
+            with (HOME / "Library" / "Preferences" / ".GlobalPreferences.plist").open("rb") as f:
+                languages = plistlib.load(f).get("AppleLanguages") or []
+            if languages and isinstance(languages[0], str):
+                return language_code(languages[0])
+        except (OSError, ValueError, AttributeError, plistlib.InvalidFileException):
+            pass
+    return "en"
+
+
+def available_languages():
+    return sorted({"en"} | {p.stem for p in LOCALES.glob("*.json")})
+
+
+def load_messages(language=None):
+    """English, then the language file from locales/, then the settings' own messages.
+    An unknown language falls back to English."""
+    code = language_code(language or "en")
+    messages = dict(ENGLISH)
+    path = LOCALES / f"{code}.json"
+    if code != "en" and code.isalpha() and path.is_file():
+        translated = read_json(path)
+        if not isinstance(translated, dict) or not set(translated) <= set(ENGLISH):
+            raise ValueError(f"Unknown message keys in {path.name}")
+        messages.update(translated)
+    messages.update(MESSAGE_OVERRIDES)
+    MESSAGES.clear()
+    MESSAGES.update(messages)
+
+
+def display_width(value):
+    return sum(2 if unicodedata.east_asian_width(c) in "WF" else
+               0 if unicodedata.combining(c) else 1 for c in value)
+
+
+def pad(value, width, right=False):
+    space = " " * max(0, width - display_width(value))
+    return space + value if right else value + space
 
 
 def number(value, minimum=0, maximum=253402214400):
@@ -1389,11 +1450,11 @@ def menubar(data):
                       (" ~" + percent(f"{share:.0f}") if share is not None and round(share) > 0
                        else "")])
         colors.append("gray" if expired or old else WARNING_COLORS.get(level(x, now), ""))
-    widths = [max(len(s[i]) for s in cells) for i in range(6)]
+    widths = [max(display_width(s[i]) for s in cells) for i in range(6)]
     lines = [title, "---"]
     for line, color in zip(cells, colors):
-        row = "  ".join((v.rjust(widths[i]) if i == 2 else v.ljust(widths[i]))
-                        if i < 5 else v for i, v in enumerate(line))
+        row = "  ".join(pad(v, widths[i], right=i == 2) if i < 5 else v
+                        for i, v in enumerate(line))
         lines.append(row + " | font=Menlo size=12 trim=false" +
                      (f" color={color}" if color else ""))
     lines.append(tr("menu_unused_legend") + " | color=gray")
@@ -1568,22 +1629,33 @@ def apply_settings(settings, base, data_dir=True):
             if not isinstance(settings[key], bool):
                 raise ValueError(f"{key} must be true or false")
             g[name] = settings[key]
+    if "language" in settings:
+        if settings["language"] is not None and not isinstance(settings["language"], str):
+            raise ValueError("language must be a language code such as \"tr\"")
+        g["LANGUAGE"] = settings["language"]
     if "messages" in settings:
         messages = settings["messages"]
         if isinstance(messages, str):
             messages = read_json(base / Path(messages).expanduser())
-        if not isinstance(messages, dict) or not set(messages) <= set(MESSAGES):
+        if not isinstance(messages, dict) or not set(messages) <= set(ENGLISH):
             raise ValueError("Unknown message keys")
-        MESSAGES.update(messages)
+        g["MESSAGE_OVERRIDES"] = dict(messages)
+    if "language" in settings or "messages" in settings:
+        load_messages(LANGUAGE)
 
 
-def configure(path):
+def configure(path, explicit=True):
+    """Explicit file (--config, TIDEWATCH_CONFIG): data lives next to it by default.
+    The standard file keeps the default data folder unless it sets data_dir."""
     global CONFIG, SETTINGS
     path = Path(path).expanduser().resolve()
     settings = read_json(path)
-    set_data_dir(path.parent)  # Data lives next to an explicit settings file by default.
+    if explicit:
+        set_data_dir(path.parent)
     apply_settings(settings, path.parent)
-    CONFIG = SETTINGS = path
+    SETTINGS = path
+    # Background refreshes find the standard file on their own.
+    CONFIG = path if explicit else None
 
 
 def main(argv=None):
@@ -1599,13 +1671,15 @@ def main(argv=None):
             ("backfill-history", "Import past Codex measurements into the history once"),
             ("usage-pattern", "Report usage by hour from the history")):
         parser.add_argument("--" + name, action="store_true", help=help_text)
-    parser.add_argument("--config", help="Settings file (default: data/settings.json); "
-                        "also read from TIDEWATCH_CONFIG")
+    parser.add_argument("--config", help="Settings file (default: ~/.config/tidewatch/"
+                        "settings.json, then data/settings.json); also TIDEWATCH_CONFIG")
     args = parser.parse_args(argv)
     try:
         config = args.config or os.environ.get("TIDEWATCH_CONFIG")
         if config:
             configure(config)
+        elif USER_SETTINGS.is_file():
+            configure(USER_SETTINGS, explicit=False)
         elif SETTINGS.is_file():
             # The default settings file is optional; a broken one falls back to defaults.
             try:
@@ -1613,6 +1687,7 @@ def main(argv=None):
             except (OSError, ValueError, TypeError, AttributeError, UnicodeError,
                     RecursionError):
                 pass
+        load_messages(os.environ.get("TIDEWATCH_LANG") or LANGUAGE or system_language())
         fast = args.short or args.menubar
         if args.claude_save and not fast:
             claude_save(sys.stdin.read())

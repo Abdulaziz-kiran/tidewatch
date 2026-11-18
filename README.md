@@ -4,7 +4,7 @@
 
 See how much of your Claude, Codex and Antigravity limits is left, in one place: terminal, JSON, or the macOS menu bar. It compares what is left of each weekly limit with the hours you actually plan to work before it resets, warns you when quota is likely to go unused, when a limit runs low, and when a new model appears.
 
-A single Python file with no dependencies. By default it never sends a prompt to any model.
+A single Python file with no dependencies. By default it never sends a prompt to any model. Output is available in English, Arabic, Chinese, French, German, Japanese, Korean, Portuguese, Russian, Spanish and Turkish.
 
 > Unofficial. Not affiliated with Anthropic, OpenAI or Google. It relies on local files and CLI output that are not stable public interfaces, so a tool update can break it.
 
@@ -43,6 +43,12 @@ python3 tidewatch.py --backfill-history  # import past Codex measurements once
 python3 tidewatch.py --usage-pattern     # when do you use your limits, by hour
 python3 tidewatch.py --config my.json    # use another settings file
 ```
+
+## Language
+
+The language comes from, in order: `TIDEWATCH_LANG` (for example `TIDEWATCH_LANG=de`), the `language` setting, the system language (`LC_ALL`, `LC_MESSAGES`, `LANG`, or the macOS language list), and English. Available: `en`, `ar`, `de`, `es`, `fr`, `ja`, `ko`, `pt`, `ru`, `tr`, `zh`. An unknown language falls back to English. The texts live in `locales/<code>.json`; English is built in. Translations other than English and Turkish were machine-made, so corrections are welcome. Arabic output reads right to left, which the aligned menu bar table does not handle well.
+
+Options, JSON field names and the warning labels in this README stay in English.
 
 ## Warnings
 
@@ -98,7 +104,7 @@ Add this to `~/.claude/settings.json`, using your own path:
 
 ## Automatic hello for Antigravity (optional, off by default)
 
-Antigravity's weekly counter appears to start only at a group's first message, so an unused window can sit idle. To have the tool start it for you, create `data/settings.json`:
+Antigravity's weekly counter appears to start only at a group's first message, so an unused window can sit idle. To have the tool start it for you, add this to your settings file (see Settings):
 
 ```json
 {"auto_hello": true}
@@ -110,10 +116,17 @@ This is experimental. It uses a small amount of your quota, it also starts that 
 
 ## Settings
 
-Settings live in `data/settings.json`, or in any file you pass with `--config` or the `TIDEWATCH_CONFIG` environment variable. With an explicit settings file, data is kept next to it (or in `data_dir`, relative to that file), and background refreshes and the menu's Refresh item use the same file. `data_dir` is ignored in the default `data/settings.json`. Every key is optional:
+Settings are read from the first of these that exists:
+
+1. the file passed with `--config`, or the `TIDEWATCH_CONFIG` environment variable;
+2. `~/.config/tidewatch/settings.json` (or `$XDG_CONFIG_HOME/tidewatch/settings.json`);
+3. `data/settings.json` next to the script (older setups).
+
+With an explicit file (1), data is kept next to it, and background refreshes and the menu's Refresh item use the same file. With the standard file (2), data stays in `data/` next to the script. In both, `data_dir` moves it, relative to the settings file (a symbolic link is followed first). `data_dir` is ignored in `data/settings.json`. Every key is optional:
 
 ```json
 {
+  "language": "en",
   "data_dir": "state",
   "timezone_offset_hours": 0,
   "work_hours": [["19:00", "22:30"]],
@@ -142,7 +155,7 @@ Settings live in `data/settings.json`, or in any file you pass with `--config` o
 - `roster_file`: a file you keep about which model does what; `--short` and the plain output point to it.
 - `short_summary`: also print the facts line and these file pointers in `--short`, which is handy for a coding agent's session-start hook.
 - `strict_codex_model_files`: treat a missing or empty Codex model cache file as a failed source, so that `--accept-models` cannot drop the other file's models.
-- `messages`: a JSON file (or object) that replaces any of the output texts, for example to translate them. The keys are in `MESSAGES` at the top of `tidewatch.py`.
+- `messages`: a JSON file (or object) that replaces any of the output texts, on top of the chosen language; for example `{"facts": "LIMITS (facts; the agent decides): {items}"}`. The keys are in `MESSAGES` at the top of `tidewatch.py` and in every `locales/*.json` file.
 - `timezone_offset_hours`: a fixed UTC offset for dates and working hours; by default the system's local time is used.
 
 ## History

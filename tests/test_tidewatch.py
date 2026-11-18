@@ -28,6 +28,14 @@ class LimitTest(unittest.TestCase):
         environment = patch.dict(os.environ, {"CODEX_HOME": str(self.root / ".codex")})
         environment.start()
         self.addCleanup(environment.stop)
+        for name in ("TIDEWATCH_CONFIG", "TIDEWATCH_LANG"):
+            os.environ.pop(name, None)
+        # English output and no settings from this machine, whatever its language.
+        self.patch_value("MESSAGES", dict(m.ENGLISH))
+        self.patch_value("MESSAGE_OVERRIDES", {})
+        self.patch_value("LANGUAGE", None)
+        self.patch_value("system_language", lambda: "en")
+        self.patch_value("USER_SETTINGS", self.root / "config" / "tidewatch" / "settings.json")
         self.patch_value("AGY", "/test/bin/agy")
         self.now = 1794211200.0
         paths = dict(ROOT=self.root, HOME=self.root, DATA=self.root / "data")
